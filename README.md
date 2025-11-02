@@ -159,7 +159,7 @@ BaccaratSimulator/
 └── package.json       # Dependencies and scripts
 ```
 
-## 🎯 System Requirements
+## System Requirements
 
 ### Minimum Requirements
 - **OS**: Windows 10, macOS 10.14, or Linux (Ubuntu 18.04+)
@@ -171,22 +171,8 @@ BaccaratSimulator/
 - **RAM**: 4 GB or more
 - **Display**: 1920x1080 or higher
 
-## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to:
-- Report bugs
-- Suggest new features
-- Submit pull requests
-
-## 👨‍💻 Author
-
-Created with ❤️ by [Your Name]
-
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Inspired by real casino Baccarat games
 - Built for educational and entertainment purposes
@@ -194,5 +180,5 @@ Created with ❤️ by [Your Name]
 
 ---
 
-**Disclaimer**: This is a simulation for entertainment purposes only. No real money is involved. Please gamble responsibly if you choose to play with real money at licensed establishments.
+**Disclaimer**: This is a simulation for entertainment purposes only. No real money is involved.
 
