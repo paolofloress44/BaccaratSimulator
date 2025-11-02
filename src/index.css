@@ -12,3 +12,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Fade-in animation for road predictions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+}
+

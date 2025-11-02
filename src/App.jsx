@@ -78,16 +78,16 @@ const Hand = ({ title, cards, revealedCount, showTotal }) => {
 
 // Helper function to get chip color based on value
 const getChipColor = (value) => {
-  if (value >= 50000) return 'from-gray-900 to-black';
-  if (value >= 25000) return 'from-gray-900 to-black';
-  if (value >= 10000) return 'from-gray-900 to-black';
-  if (value >= 5000) return 'from-gray-900 to-black';
-  if (value >= 2500) return 'from-amber-900 to-amber-950';
-  if (value >= 1000) return 'from-yellow-400 to-yellow-600';
-  if (value >= 500) return 'from-orange-500 to-orange-700';
-  if (value >= 250) return 'from-green-500 to-green-700';
-  if (value >= 100) return 'from-blue-500 to-blue-700';
-  return 'from-red-500 to-red-700'; // 50
+  if (value >= 50000) return 'from-cyan-400 to-cyan-600';      // 50k+ = Cyan
+  if (value >= 25000) return 'from-pink-500 to-pink-700';      // 25k = Pink
+  if (value >= 10000) return 'from-purple-500 to-purple-700';  // 10k = Purple
+  if (value >= 5000) return 'from-gray-900 to-black';          // 5k = Black
+  if (value >= 2500) return 'from-amber-900 to-amber-950';     // 2.5k = Brown
+  if (value >= 1000) return 'from-yellow-400 to-yellow-600';   // 1k = Yellow
+  if (value >= 500) return 'from-orange-500 to-orange-700';    // 500 = Orange
+  if (value >= 250) return 'from-green-500 to-green-700';      // 250 = Green
+  if (value >= 100) return 'from-blue-500 to-blue-700';        // 100 = Blue
+  return 'from-red-500 to-red-700';                            // 50 = Red
 };
 
 // Helper function to break down bet amount into chips
@@ -129,12 +129,14 @@ const MiniChip = ({ value, index }) => {
 };
 
 // Betting Area Component
-const BettingArea = ({ title, payout, betAmount, onClick, isWinner, bgColor = 'bg-red-900' }) => {
+const BettingArea = ({ title, payout, betAmount, onClick, isWinner, bgColor = 'bg-red-900', onMouseEnter, onMouseLeave }) => {
   const chips = betAmount > 0 ? getChipBreakdown(betAmount) : [];
   
   return (
     <button
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className={`relative p-3 md:p-4 rounded-lg border-2 transition-all min-h-[80px] md:min-h-[100px] ${
         isWinner 
           ? 'bg-green-600 border-yellow-400 animate-pulse' 
@@ -183,14 +185,19 @@ const ChipSelector = ({ value, selected, onClick }) => {
 };
 
 // Toggle Switch Component
-const ToggleSwitch = ({ enabled, onToggle, label }) => {
+const ToggleSwitch = ({ enabled, onToggle, label, disabled = false }) => {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-white text-sm font-medium">{label}</span>
+      <span className={`text-sm font-medium ${disabled ? 'text-gray-500' : 'text-white'}`}>{label}</span>
       <button
         onClick={onToggle}
+        disabled={disabled}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          enabled ? 'bg-green-500' : 'bg-gray-600'
+          disabled 
+            ? 'bg-gray-700 cursor-not-allowed opacity-50'
+            : enabled 
+              ? 'bg-green-500' 
+              : 'bg-gray-600'
         }`}
       >
         <span
@@ -199,6 +206,436 @@ const ToggleSwitch = ({ enabled, onToggle, label }) => {
           }`}
         />
       </button>
+    </div>
+  );
+};
+
+// Helper function to predict next Big Road entry
+const predictNextBigRoadEntry = (bigRoadData, outcome) => {
+  if (bigRoadData.length === 0) {
+    return { outcome, entries: ['win'], isNewColumn: true };
+  }
+  
+  const lastEntry = bigRoadData[bigRoadData.length - 1];
+  if (lastEntry.outcome === outcome) {
+    // Same outcome - extend current column
+    return { outcome, entries: [...lastEntry.entries, 'win'], isNewColumn: false };
+  } else {
+    // Different outcome - new column
+    return { outcome, entries: ['win'], isNewColumn: true };
+  }
+};
+
+// Helper function to calculate derivative road by comparing Big Road column heights
+const calculateDerivativeRoadFromColumns = (bigRoadData, lookbackDistance) => {
+  const minColumns = lookbackDistance + 1;
+  if (bigRoadData.length < minColumns) return [];
+  
+  const colors = [];
+  
+  // Start from the column at position (lookbackDistance), compare with column X-lookbackDistance
+  for (let colIndex = lookbackDistance; colIndex < bigRoadData.length; colIndex++) {
+    const currentColumn = bigRoadData[colIndex];
+    const compareColumn = bigRoadData[colIndex - lookbackDistance];
+    
+    // Compare heights (number of entries in each column)
+    const currentHeight = currentColumn.entries.length;
+    const compareHeight = compareColumn.entries.length;
+    
+    // Same height = Red (Banker color), Different = Blue (Player color)
+    const color = currentHeight === compareHeight ? 'red' : 'blue';
+    colors.push(color);
+  }
+  
+  // Convert color sequence into columns (same color = go down, different = new column)
+  const columns = [];
+  let currentColumn = null;
+  
+  colors.forEach(color => {
+    if (!currentColumn || currentColumn.color !== color) {
+      // Different color = start new column
+      currentColumn = { color, count: 1 };
+      columns.push(currentColumn);
+    } else {
+      // Same color = extend current column (go down)
+      currentColumn.count++;
+    }
+  });
+  
+  return columns;
+};
+
+// Helper function to predict Small Road color
+const predictSmallRoadColor = (bigRoadData, outcome) => {
+  if (bigRoadData.length < 2) return null;
+  
+  // Simulate adding the prediction to Big Road
+  const predictedEntry = predictNextBigRoadEntry(bigRoadData, outcome);
+  let simulatedBigRoad;
+  
+  if (predictedEntry.isNewColumn) {
+    // New column
+    simulatedBigRoad = [...bigRoadData, predictedEntry];
+  } else {
+    // Extend existing column
+    simulatedBigRoad = [...bigRoadData];
+    simulatedBigRoad[simulatedBigRoad.length - 1] = predictedEntry;
+  }
+  
+  // Need at least 3 columns for Small Road (compare X with X-2)
+  if (simulatedBigRoad.length < 3) return null;
+  
+  // Get the last column and compare with column 2 positions back
+  const lastCol = simulatedBigRoad[simulatedBigRoad.length - 1];
+  const compareCol = simulatedBigRoad[simulatedBigRoad.length - 3];
+  
+  return lastCol.entries.length === compareCol.entries.length ? 'red' : 'blue';
+};
+
+// Helper function to predict Cockroach Road color
+const predictCockroachRoadColor = (bigRoadData, outcome) => {
+  if (bigRoadData.length < 3) return null;
+  
+  // Simulate adding the prediction to Big Road
+  const predictedEntry = predictNextBigRoadEntry(bigRoadData, outcome);
+  let simulatedBigRoad;
+  
+  if (predictedEntry.isNewColumn) {
+    // New column
+    simulatedBigRoad = [...bigRoadData, predictedEntry];
+  } else {
+    // Extend existing column
+    simulatedBigRoad = [...bigRoadData];
+    simulatedBigRoad[simulatedBigRoad.length - 1] = predictedEntry;
+  }
+  
+  // Need at least 4 columns for Cockroach Road (compare X with X-3)
+  if (simulatedBigRoad.length < 4) return null;
+  
+  // Get the last column and compare with column 3 positions back
+  const lastCol = simulatedBigRoad[simulatedBigRoad.length - 1];
+  const compareCol = simulatedBigRoad[simulatedBigRoad.length - 4];
+  
+  return lastCol.entries.length === compareCol.entries.length ? 'red' : 'blue';
+};
+
+// Helper function to calculate Small Road (as columns)
+// Small Road starts at Big Road column 3, compares column X with X-2
+const calculateSmallRoad = (bigRoadData) => {
+  return calculateDerivativeRoadFromColumns(bigRoadData, 2);
+};
+
+// Helper function to calculate Cockroach Road (as columns)
+// Cockroach Road starts at Big Road column 4, compares column X with X-3
+const calculateCockroachRoad = (bigRoadData) => {
+  return calculateDerivativeRoadFromColumns(bigRoadData, 3);
+};
+
+// Big Road Component
+const BigRoad = ({ data, predictedOutcome }) => {
+  const prediction = predictedOutcome ? predictNextBigRoadEntry(data, predictedOutcome) : null;
+  
+  if (data.length === 0 && !prediction) {
+    return (
+      <div className="bg-gray-900 rounded-lg p-4">
+        <h3 className="text-white font-bold mb-2">Big Road</h3>
+        <div className="text-gray-500 text-sm text-center py-4">
+          No results yet - play some hands!
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-lg p-4">
+      <h3 className="text-white font-bold mb-2">Big Road</h3>
+      <div className="overflow-x-auto">
+        <div className="flex gap-1">
+          {data.map((column, colIndex) => {
+            const isLastColumn = colIndex === data.length - 1;
+            const showPredictionHere = prediction && !prediction.isNewColumn && isLastColumn;
+            
+            return (
+              <div key={colIndex} className="flex flex-col gap-1">
+                {column.entries.slice(0, 6).map((entry, rowIndex) => (
+                  <div
+                    key={rowIndex}
+                    className={`relative w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs ${
+                      column.outcome === 'banker'
+                        ? 'border-red-400'
+                        : 'border-blue-400'
+                    }`}
+                  >
+                    {entry === 'tie' && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-full h-0.5 bg-green-500 transform rotate-45"></div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {showPredictionHere && column.entries.length < 6 && (
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs animate-pulse opacity-50 ${
+                      prediction.outcome === 'banker'
+                        ? 'border-red-400'
+                        : 'border-blue-400'
+                    }`}
+                    style={{ animation: 'fadeIn 0.3s ease-in' }}
+                  />
+                )}
+              </div>
+            );
+          })}
+          {prediction && prediction.isNewColumn && (
+            <div className="flex flex-col gap-1">
+              <div
+                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs animate-pulse opacity-50 ${
+                  prediction.outcome === 'banker'
+                    ? 'border-red-400'
+                    : 'border-blue-400'
+                }`}
+                style={{ animation: 'fadeIn 0.3s ease-in' }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Small Road Component
+const SmallRoad = ({ bigRoadData, predictedOutcome }) => {
+  const smallRoadColumns = calculateSmallRoad(bigRoadData);
+  const predictedColor = predictedOutcome ? predictSmallRoadColor(bigRoadData, predictedOutcome) : null;
+  
+  if (smallRoadColumns.length === 0 && !predictedColor) {
+    return (
+      <div className="bg-gray-900 rounded-lg p-4">
+        <h3 className="text-white font-bold text-sm mb-2">Small Road</h3>
+        <div className="text-gray-500 text-xs text-center py-2">
+          Need 3+ results
+        </div>
+      </div>
+    );
+  }
+
+  // Check if prediction extends current column or creates new column
+  const lastColumn = smallRoadColumns[smallRoadColumns.length - 1];
+  const predictionExtendsColumn = predictedColor && lastColumn && lastColumn.color === predictedColor;
+
+  return (
+    <div className="bg-gray-900 rounded-lg p-4">
+      <h3 className="text-white font-bold text-sm mb-2">Small Road</h3>
+      <div>
+        <div className="flex gap-0.5 flex-wrap max-w-full">
+          {smallRoadColumns.map((column, colIndex) => {
+            const isLastColumn = colIndex === smallRoadColumns.length - 1;
+            const showPredictionHere = isLastColumn && predictionExtendsColumn;
+            
+            return (
+              <div key={colIndex} className="flex flex-col gap-0.5">
+                {[...Array(Math.min(column.count, 6))].map((_, rowIndex) => (
+                  <div
+                    key={rowIndex}
+                    className={`w-4 h-4 rounded-full border ${
+                      column.color === 'red'
+                        ? 'bg-red-600 border-red-400'
+                        : 'bg-blue-600 border-blue-400'
+                    }`}
+                  />
+                ))}
+                {showPredictionHere && column.count < 6 && (
+                  <div
+                    className={`w-4 h-4 rounded-full border opacity-50 animate-pulse ${
+                      predictedColor === 'red'
+                        ? 'bg-red-600 border-red-400'
+                        : 'bg-blue-600 border-blue-400'
+                    }`}
+                    style={{ animation: 'fadeIn 0.3s ease-in' }}
+                  />
+                )}
+              </div>
+            );
+          })}
+          {predictedColor && !predictionExtendsColumn && (
+            <div className="flex flex-col gap-0.5">
+              <div
+                className={`w-4 h-4 rounded-full border opacity-50 animate-pulse ${
+                  predictedColor === 'red'
+                    ? 'bg-red-600 border-red-400'
+                    : 'bg-blue-600 border-blue-400'
+                }`}
+                style={{ animation: 'fadeIn 0.3s ease-in' }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Cockroach Road Component
+const CockroachRoad = ({ bigRoadData, predictedOutcome }) => {
+  const cockroachRoadColumns = calculateCockroachRoad(bigRoadData);
+  const predictedColor = predictedOutcome ? predictCockroachRoadColor(bigRoadData, predictedOutcome) : null;
+  
+  if (cockroachRoadColumns.length === 0 && !predictedColor) {
+    return (
+      <div className="bg-gray-900 rounded-lg p-4">
+        <h3 className="text-white font-bold text-sm mb-2">Cockroach Road</h3>
+        <div className="text-gray-500 text-xs text-center py-2">
+          Need 4+ results
+        </div>
+      </div>
+    );
+  }
+
+  // Check if prediction extends current column or creates new column
+  const lastColumn = cockroachRoadColumns[cockroachRoadColumns.length - 1];
+  const predictionExtendsColumn = predictedColor && lastColumn && lastColumn.color === predictedColor;
+
+  return (
+    <div className="bg-gray-900 rounded-lg p-4">
+      <h3 className="text-white font-bold text-sm mb-2">Cockroach Road</h3>
+      <div>
+        <div className="flex gap-0.5 flex-wrap max-w-full">
+          {cockroachRoadColumns.map((column, colIndex) => {
+            const isLastColumn = colIndex === cockroachRoadColumns.length - 1;
+            const showPredictionHere = isLastColumn && predictionExtendsColumn;
+            
+            return (
+              <div key={colIndex} className="flex flex-col gap-0.5">
+                {[...Array(Math.min(column.count, 6))].map((_, rowIndex) => (
+                  <div
+                    key={rowIndex}
+                    className={`w-4 h-4 flex items-center justify-center ${
+                      column.color === 'red' ? 'text-red-500' : 'text-blue-500'
+                    }`}
+                  >
+                    /
+                  </div>
+                ))}
+                {showPredictionHere && column.count < 6 && (
+                  <div
+                    className={`w-4 h-4 flex items-center justify-center opacity-50 animate-pulse ${
+                      predictedColor === 'red' ? 'text-red-500' : 'text-blue-500'
+                    }`}
+                    style={{ animation: 'fadeIn 0.3s ease-in' }}
+                  >
+                    /
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {predictedColor && !predictionExtendsColumn && (
+            <div className="flex flex-col gap-0.5">
+              <div
+                className={`w-4 h-4 flex items-center justify-center opacity-50 animate-pulse ${
+                  predictedColor === 'red' ? 'text-red-500' : 'text-blue-500'
+                }`}
+                style={{ animation: 'fadeIn 0.3s ease-in' }}
+              >
+                /
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Automated Test Mode Panel Component
+const AutomatedTestPanel = ({ isOpen, testRunning, testPaused, testResults, onStart, onPause, onResume, onStop }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 bg-gray-900 border-4 border-yellow-500 rounded-lg p-4 shadow-2xl z-50 w-80">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-yellow-400 font-bold text-lg">
+          🤖 Automated Test Mode {testRunning && (testPaused ? '⏸' : '▶')}
+        </h3>
+        <span className="text-xs text-gray-400">Ctrl+Shift+,</span>
+      </div>
+      
+      <div className="bg-gray-800 rounded p-3 mb-3">
+        <div className="text-sm text-gray-300 space-y-1">
+          <div className="flex justify-between">
+            <span>Hands Played:</span>
+            <span className="text-yellow-400 font-bold">{testResults.handsPlayed}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Wins / Losses / Ties:</span>
+            <span className="font-bold">
+              <span className="text-green-400">{testResults.wins}</span> / 
+              <span className="text-red-400"> {testResults.losses}</span> / 
+              <span className="text-gray-400"> {testResults.ties}</span>
+            </span>
+          </div>
+          <div className="flex justify-between border-t border-gray-700 pt-1 mt-1">
+            <span>Money Won:</span>
+            <span className="text-green-400 font-bold">₱{testResults.moneyWon.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Money Lost:</span>
+            <span className="text-red-400 font-bold">₱{testResults.moneyLost.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between border-t border-gray-700 pt-1 mt-1">
+            <span>Net Profit:</span>
+            <span className={`font-bold ${testResults.moneyWon - testResults.moneyLost >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              ₱{(testResults.moneyWon - testResults.moneyLost).toLocaleString()}
+            </span>
+          </div>
+          <div className="flex justify-between border-t border-gray-700 pt-1 mt-1">
+            <span>Reshuffles:</span>
+            <span className="text-blue-400 font-bold">{testResults.reshuffles}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Errors:</span>
+            <span className="text-red-500 font-bold">{testResults.errors}</span>
+          </div>
+        </div>
+      </div>
+
+      {testRunning ? (
+        <div className="flex gap-2">
+          {testPaused ? (
+            <button
+              onClick={onResume}
+              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-all"
+            >
+              ▶ Resume
+            </button>
+          ) : (
+            <button
+              onClick={onPause}
+              className="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded transition-all"
+            >
+              ⏸ Pause
+            </button>
+          )}
+          <button
+            onClick={onStop}
+            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded transition-all"
+          >
+            ⏹ Stop
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onStart}
+          className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded transition-all"
+        >
+          ▶ Start Auto-Test
+        </button>
+      )}
+
+      <p className="text-xs text-gray-400 mt-2 text-center">
+        Infinite balance • Random bets • Speed mode
+      </p>
     </div>
   );
 };
@@ -294,15 +731,29 @@ const HelpModal = ({ isOpen, onClose }) => {
           </div>
         </section>
 
+        {/* Pattern Tracking */}
+        <section className="mb-6">
+          <h3 className="text-2xl font-bold text-white mb-3">📊 Pattern Tracking Roads</h3>
+          <div className="text-gray-300 space-y-2">
+            <p><strong className="text-yellow-400">Big Road:</strong> Tracks Player (blue) and Banker (red) wins in columns. New column starts when winner changes.</p>
+            <p><strong className="text-yellow-400">Small Road:</strong> Derivative tracking that compares column depths (starts after 3rd column). Red = pattern continues, Blue = pattern changes.</p>
+            <p><strong className="text-yellow-400">Cockroach Road:</strong> Extended derivative (starts after 4th column). Uses diagonal slashes to show longer-term patterns.</p>
+            <p className="text-sm italic">These roads help identify betting patterns and trends.</p>
+          </div>
+        </section>
+
         {/* Game Features */}
         <section>
           <h3 className="text-2xl font-bold text-white mb-3">✨ Game Features</h3>
           <div className="text-gray-300 space-y-2">
             <ul className="list-disc list-inside ml-4">
               <li><strong>REBET:</strong> Quickly place the same bets as your previous round</li>
+              <li><strong>UNDO:</strong> Remove your last bet if you made a mistake</li>
+              <li><strong>Speed Mode:</strong> Toggle for 3x faster card reveals (250ms instead of 750ms)</li>
+              <li><strong>8-Deck Shoe:</strong> Professional casino setup with 416 cards</li>
               <li><strong>Colored Chips:</strong> Each denomination has a unique color</li>
               <li><strong>Visual Chip Stacking:</strong> See your bets displayed as chips on the table</li>
-              <li><strong>Realistic Card Reveals:</strong> Cards are revealed one by one with proper timing</li>
+              <li><strong>No Commission Mode:</strong> Play with 1:1 Banker payouts (0.5:1 on Banker 6)</li>
             </ul>
           </div>
         </section>
@@ -348,16 +799,50 @@ function App() {
   const [noCommission, setNoCommission] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [betHistory, setBetHistory] = useState([]);
+  const [speedMode, setSpeedMode] = useState(false);
+  const [bigRoadData, setBigRoadData] = useState([]);
+  const [devMode, setDevMode] = useState(false);
+  const [testRunning, setTestRunning] = useState(false);
+  const [testPaused, setTestPaused] = useState(false);
+  const [testResults, setTestResults] = useState({
+    handsPlayed: 0,
+    reshuffles: 0,
+    wins: 0,
+    losses: 0,
+    ties: 0,
+    moneyWon: 0,
+    moneyLost: 0,
+    errors: 0
+  });
+  const [balanceBeforeBet, setBalanceBeforeBet] = useState(0);
+  const [predictedOutcome, setPredictedOutcome] = useState(null); // 'player' or 'banker'
 
   const chipValues = [50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 
-  // Create and shuffle a shoe of 3 decks
+  // Keyboard shortcut to toggle dev mode (Ctrl+Shift+,)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check for Ctrl+Shift+, (key code can be ',' or '<')
+      if (e.ctrlKey && e.shiftKey && (e.key === ',' || e.key === '<')) {
+        e.preventDefault();
+        setDevMode(prev => {
+          const newMode = !prev;
+          console.log('Automated Test Mode:', newMode ? 'ENABLED' : 'DISABLED');
+          return newMode;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Create and shuffle a shoe of 8 decks (416 cards)
   const createShoe = () => {
     const suits = ['♥', '♦', '♣', '♠'];
     const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     const newShoe = [];
     
-    for (let deck = 0; deck < 3; deck++) {
+    for (let deck = 0; deck < 8; deck++) {
       for (const suit of suits) {
         for (const rank of ranks) {
           newShoe.push({ suit, rank });
@@ -483,14 +968,39 @@ function App() {
     // Deduct bets from balance
     setBalance(prev => prev - totalBets);
     
-    // Check if we need to reshuffle
-    if (shoe.length < 6) {
-      setMessage('Shuffling new shoe...');
-      setShoe(createShoe());
-      setTimeout(() => dealInitialCards(), 1000);
+    // Check if we need to reshuffle (need at least 14 cards for worst case)
+    if (shoe.length < 14) {
+      const newShoe = createShoe();
+      setShoe(newShoe);
+      setBigRoadData([]); // Clear pattern tracking roads for new shoe
+      setMessage(`New shoe shuffled! Your balance: ₱${balance - totalBets}`);
+      setTimeout(() => dealInitialCardsWithShoe(newShoe), 1000);
     } else {
       dealInitialCards();
     }
+  };
+
+  // Deal initial 4 cards with provided shoe (for reshuffle scenario)
+  const dealInitialCardsWithShoe = (providedShoe) => {
+    setGamePhase('dealing');
+    setMessage('Dealing cards...');
+    setRevealedPlayerCards(0);
+    setRevealedBankerCards(0);
+
+    const newShoe = [...providedShoe];
+    const newPlayerHand = [newShoe.pop(), newShoe.pop()];
+    const newBankerHand = [newShoe.pop(), newShoe.pop()];
+
+    // Deal in order: P, B, P, B
+    setPlayerHand([newPlayerHand[0]]);
+    setBankerHand([newBankerHand[0]]);
+    
+    setTimeout(() => {
+      setPlayerHand([newPlayerHand[0], newPlayerHand[1]]);
+      setBankerHand([newBankerHand[0], newBankerHand[1]]);
+      setShoe(newShoe);
+      setGamePhase('revealing');
+    }, 500);
   };
 
   // Deal initial 4 cards
@@ -520,18 +1030,20 @@ function App() {
   useEffect(() => {
     if (gamePhase !== 'revealing') return;
 
+    const revealDelay = testRunning ? 50 : speedMode ? 250 : 750; // Test: 50ms, Speed: 250ms, Normal: 750ms
+
     const revealSequence = async () => {
       setRevealedPlayerCards(1);
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise(resolve => setTimeout(resolve, revealDelay));
       
       setRevealedBankerCards(1);
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise(resolve => setTimeout(resolve, revealDelay));
       
       setRevealedPlayerCards(2);
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise(resolve => setTimeout(resolve, revealDelay));
       
       setRevealedBankerCards(2);
-      await new Promise(resolve => setTimeout(resolve, 750));
+      await new Promise(resolve => setTimeout(resolve, revealDelay));
 
       // Check for naturals
       if (checkNatural(playerHand) || checkNatural(bankerHand)) {
@@ -543,7 +1055,7 @@ function App() {
     };
 
     revealSequence();
-  }, [gamePhase]);
+  }, [gamePhase, speedMode, testRunning]);
 
   // Drawing phase - apply third card rules
   useEffect(() => {
@@ -633,14 +1145,17 @@ function App() {
       const winners = [];
       let resultMessage = '';
 
-      // Determine winner
+      // Determine winner and update Big Road
+      let outcome = '';
       if (playerValue > bankerValue) {
+        outcome = 'player';
         resultMessage = `Player wins with ${playerValue}!`;
         if (bets.player > 0) {
           winnings += bets.player * 2; // 1:1 payout
           winners.push('player');
         }
       } else if (bankerValue > playerValue) {
+        outcome = 'banker';
         resultMessage = `Banker wins with ${bankerValue}!`;
         if (bets.banker > 0) {
           // No commission: full payout except banker wins with 6
@@ -656,6 +1171,7 @@ function App() {
           winners.push('banker');
         }
       } else {
+        outcome = 'tie';
         resultMessage = `Tie! Both at ${playerValue}`;
         // Return main bets
         winnings += bets.player + bets.banker;
@@ -664,6 +1180,40 @@ function App() {
           winners.push('tie');
         }
       }
+
+      // Update Big Road (ties extend the last column with a tie marker)
+      setBigRoadData(prev => {
+        const newData = [...prev];
+        
+        if (outcome === 'tie') {
+          // Tie - add to last column if exists
+          if (newData.length === 0) {
+            // First result is a tie, create a column (though this is rare)
+            newData.push({ outcome: 'banker', entries: ['tie'] }); // Default to banker color
+          } else {
+            const lastColumn = newData[newData.length - 1];
+            newData[newData.length - 1] = {
+              ...lastColumn,
+              entries: [...lastColumn.entries, 'tie']
+            };
+          }
+        } else {
+          // Player or Banker win
+          if (newData.length === 0 || newData[newData.length - 1].outcome !== outcome) {
+            // New column - different winner
+            newData.push({ outcome, entries: ['win'] });
+          } else {
+            // Same winner - add to current column
+            const lastColumn = newData[newData.length - 1];
+            newData[newData.length - 1] = {
+              ...lastColumn,
+              entries: [...lastColumn.entries, 'win']
+            };
+          }
+        }
+        
+        return newData;
+      });
 
       // Check pair bets
       const playerHasPair = isPair(playerHand);
@@ -775,9 +1325,196 @@ function App() {
   const handleRestart = () => {
     setBalance(5000);
     setShoe(createShoe());
+    setBigRoadData([]); // Clear road history on restart
     handleNewRound();
     setMessage('Game restarted! Good luck!');
   };
+
+  // Automated Testing Mode
+  const runAutomatedTest = () => {
+    if (testRunning) return;
+    
+    setTestRunning(true);
+    setTestPaused(false);
+    setTestResults({ handsPlayed: 0, reshuffles: 0, wins: 0, losses: 0, ties: 0, moneyWon: 0, moneyLost: 0, errors: 0 });
+    setSpeedMode(true); // Enable speed mode for faster testing
+    setBalance(1000000); // Infinite balance
+    
+    setMessage('🤖 Automated test mode active - Running tests...');
+  };
+
+  const pauseTest = () => {
+    setTestPaused(true);
+    setMessage('🤖 Test paused');
+  };
+
+  const resumeTest = () => {
+    setTestPaused(false);
+    setMessage('🤖 Test resumed');
+  };
+
+  const stopTest = () => {
+    setTestRunning(false);
+    setTestPaused(false);
+    setSpeedMode(false);
+    setMessage('🤖 Test stopped');
+  };
+
+  // Auto-run test hands when test mode is active
+  useEffect(() => {
+    if (!testRunning || testPaused || gamePhase !== 'betting') return;
+
+    // Check if bets are already placed
+    const currentTotalBets = Object.values(bets).reduce((a, b) => a + b, 0);
+    if (currentTotalBets > 0) return; // Bets already placed, don't reset
+
+    const runTestHand = async () => {
+      try {
+        // Ensure infinite balance
+        setBalance(1000000);
+        
+        // Check if reshuffle will happen
+        if (shoe.length < 14) {
+          setTestResults(prev => ({ ...prev, reshuffles: prev.reshuffles + 1 }));
+        }
+
+        // Place random bets with varied amounts and prioritize main bets
+        const newBets = {
+          player: 0,
+          banker: 0,
+          tie: 0,
+          playerPair: 0,
+          bankerPair: 0,
+          playerBonus: 0,
+          bankerBonus: 0,
+          perfectPair: 0,
+          eitherPair: 0
+        };
+
+        // Always bet on Player or Banker (main bets) - 95% chance
+        const betOnMain = Math.random() < 0.95;
+        if (betOnMain) {
+          // Choose Player, Banker, or both
+          const mainBetChoice = Math.random();
+          if (mainBetChoice < 0.45) {
+            // Bet only on Player (45%)
+            const numChips = Math.floor(Math.random() * 5) + 1; // 1-5 chips
+            for (let i = 0; i < numChips; i++) {
+              const chipIndex = Math.floor(Math.random() * chipValues.length);
+              newBets.player += chipValues[chipIndex];
+            }
+          } else if (mainBetChoice < 0.90) {
+            // Bet only on Banker (45%)
+            const numChips = Math.floor(Math.random() * 5) + 1; // 1-5 chips
+            for (let i = 0; i < numChips; i++) {
+              const chipIndex = Math.floor(Math.random() * chipValues.length);
+              newBets.banker += chipValues[chipIndex];
+            }
+          } else {
+            // Bet on both (10%)
+            const playerChips = Math.floor(Math.random() * 3) + 1; // 1-3 chips
+            const bankerChips = Math.floor(Math.random() * 3) + 1; // 1-3 chips
+            for (let i = 0; i < playerChips; i++) {
+              const chipIndex = Math.floor(Math.random() * chipValues.length);
+              newBets.player += chipValues[chipIndex];
+            }
+            for (let i = 0; i < bankerChips; i++) {
+              const chipIndex = Math.floor(Math.random() * chipValues.length);
+              newBets.banker += chipValues[chipIndex];
+            }
+          }
+        }
+
+        // 25% chance to add side bets on top of main bets
+        if (Math.random() < 0.25) {
+          const sideBets = ['tie', 'playerPair', 'bankerPair', 'perfectPair', 'eitherPair', 'playerBonus', 'bankerBonus'];
+          const numSideBets = Math.floor(Math.random() * 3) + 1; // 1-3 side bets
+          
+          for (let i = 0; i < numSideBets; i++) {
+            const randomSideBet = sideBets[Math.floor(Math.random() * sideBets.length)];
+            const numChips = Math.floor(Math.random() * 2) + 1; // 1-2 chips for side bets
+            for (let j = 0; j < numChips; j++) {
+              // Use smaller to medium chips for side bets
+              const chipIndex = Math.floor(Math.random() * Math.min(7, chipValues.length));
+              newBets[randomSideBet] += chipValues[chipIndex];
+            }
+          }
+        }
+
+        // If somehow no bets were placed (5% edge case), place a minimum bet
+        const totalBetsPlaced = Object.values(newBets).reduce((a, b) => a + b, 0);
+        if (totalBetsPlaced === 0) {
+          // Fallback: bet on player with a random chip
+          const chipIndex = Math.floor(Math.random() * chipValues.length);
+          newBets.player = chipValues[chipIndex];
+        }
+
+        setBets(newBets);
+        setBetHistory([]);
+        
+      } catch (error) {
+        setTestResults(prev => ({ ...prev, errors: prev.errors + 1 }));
+        console.error('Test error:', error);
+      }
+    };
+
+    // Small delay to ensure clean state
+    const timer = setTimeout(runTestHand, 100);
+    return () => clearTimeout(timer);
+  }, [testRunning, testPaused, gamePhase, bets]);
+
+  // Separate effect to deal after bets are placed in test mode
+  useEffect(() => {
+    if (!testRunning || testPaused || gamePhase !== 'betting') return;
+    
+    const totalBets = Object.values(bets).reduce((a, b) => a + b, 0);
+    if (totalBets > 0) {
+      // Bets are placed, wait a bit then deal
+      const dealTimer = setTimeout(() => {
+        if (testRunning && !testPaused && gamePhase === 'betting') {
+          setBalanceBeforeBet(balance); // Track balance before dealing
+          setTestResults(prev => ({ ...prev, handsPlayed: prev.handsPlayed + 1 }));
+          handleDeal();
+        }
+      }, 800);
+      
+      return () => clearTimeout(dealTimer);
+    }
+  }, [bets, testRunning, testPaused, gamePhase]);
+
+  // Auto-continue to next round when test is running and track money
+  useEffect(() => {
+    if (testRunning && gamePhase === 'payout') {
+      // Calculate money won or lost
+      const balanceChange = balance - balanceBeforeBet;
+      
+      if (balanceChange > 0) {
+        // Won money
+        setTestResults(prev => ({
+          ...prev,
+          moneyWon: prev.moneyWon + balanceChange,
+          wins: prev.wins + 1
+        }));
+      } else if (balanceChange < 0) {
+        // Lost money
+        setTestResults(prev => ({
+          ...prev,
+          moneyLost: prev.moneyLost + Math.abs(balanceChange),
+          losses: prev.losses + 1
+        }));
+      } else {
+        // Broke even (tie or push)
+        setTestResults(prev => ({
+          ...prev,
+          ties: prev.ties + 1
+        }));
+      }
+      
+      setTimeout(() => {
+        handleNewRound();
+      }, 1000);
+    }
+  }, [testRunning, gamePhase, balance, balanceBeforeBet]);
 
   // Calculate total bet
   const totalBet = Object.values(bets).reduce((a, b) => a + b, 0);
@@ -817,6 +1554,12 @@ function App() {
                 enabled={noCommission}
                 onToggle={() => setNoCommission(!noCommission)}
                 label="No Commission"
+                disabled={gamePhase !== 'betting'}
+              />
+              <ToggleSwitch 
+                enabled={speedMode}
+                onToggle={() => setSpeedMode(!speedMode)}
+                label="Speed Mode"
               />
               <button
                 onClick={handleRestart}
@@ -894,6 +1637,8 @@ function App() {
                 payout="1:1"
                 betAmount={bets.player}
                 onClick={() => placeBet('player')}
+                onMouseEnter={() => setPredictedOutcome('player')}
+                onMouseLeave={() => setPredictedOutcome(null)}
                 isWinner={winningBets.includes('player')}
                 bgColor="bg-blue-700"
               />
@@ -910,6 +1655,8 @@ function App() {
                 payout={noCommission ? "1:1 (0.5:1 on 6)" : "0.95:1"}
                 betAmount={bets.banker}
                 onClick={() => placeBet('banker')}
+                onMouseEnter={() => setPredictedOutcome('banker')}
+                onMouseLeave={() => setPredictedOutcome(null)}
                 isWinner={winningBets.includes('banker')}
                 bgColor="bg-red-700"
               />
@@ -960,6 +1707,30 @@ function App() {
             </div>
           </div>
 
+          {/* Roads Display - Big Road, Small Road, Cockroach Road */}
+          <div className="mb-6">
+            <div className="bg-gray-800 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-white font-bold text-lg">Pattern Tracking</h3>
+                <button
+                  onClick={() => setBigRoadData([])}
+                  className="text-xs px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded"
+                >
+                  Clear All
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <BigRoad data={bigRoadData} predictedOutcome={predictedOutcome} />
+                </div>
+                <div className="flex flex-col gap-4">
+                  <SmallRoad bigRoadData={bigRoadData} predictedOutcome={predictedOutcome} />
+                  <CockroachRoad bigRoadData={bigRoadData} predictedOutcome={predictedOutcome} />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Control Buttons */}
           <div className="flex flex-col md:flex-row gap-3 md:gap-4 justify-center">
             {gamePhase === 'betting' && (
@@ -1005,6 +1776,18 @@ function App() {
 
       {/* Help Modal */}
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+
+      {/* Automated Test Mode Panel */}
+      <AutomatedTestPanel 
+        isOpen={devMode}
+        testRunning={testRunning}
+        testPaused={testPaused}
+        testResults={testResults}
+        onStart={runAutomatedTest}
+        onPause={pauseTest}
+        onResume={resumeTest}
+        onStop={stopTest}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 {
   "name": "baccarat-game-simulator",
   "productName": "Baccarat Simulator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A professional Baccarat casino game simulator with realistic gameplay and betting options",
   "author": "Your Name",
   "main": "electron/main.js",

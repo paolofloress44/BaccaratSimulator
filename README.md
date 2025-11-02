@@ -2,16 +2,18 @@
 
 A professional Baccarat casino game simulator built as a standalone desktop application. Experience authentic casino gameplay with realistic betting options, card reveals, and a beautiful user interface.
 
-![Baccarat Simulator](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Baccarat Simulator](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ## ✨ Features
 
 ### Core Gameplay
 - **Authentic Baccarat Rules** - Follow official casino Baccarat rules including natural wins and third card drawing
+- **8-Deck Shoe** - Professional 416-card shoe with automatic reshuffle
 - **Multiple Betting Options** - Player, Banker, Tie, Pairs, Bonus bets, and more
-- **Realistic Card Dealing** - Cards reveal one by one with proper timing (750ms intervals)
+- **Realistic Card Dealing** - Cards reveal one by one with proper timing
 - **Third Card Display** - Third cards appear below the first two in portrait orientation
+- **No Commission Mode** - Optional no-commission Baccarat variant
 
 ### Enhanced Features
 - **🎨 Colored Chips** - Each denomination has its own color:
@@ -19,14 +21,38 @@ A professional Baccarat casino game simulator built as a standalone desktop appl
   - 100 = Blue
   - 250 = Green
   - 500 = Orange
-  - 1000 = Yellow
-  - 2500 = Brown
-  - 5000+ = Black
+  - 1,000 = Yellow
+  - 2,500 = Brown
+  - 5,000 = Black
+  - 10,000 = Purple
+  - 25,000 = Pink
+  - 50,000+ = Cyan
 
 - **💰 Visual Chip Stacking** - See your bets as stacked chips on the betting areas
 - **🔄 Rebet Function** - Quickly place the same bets as your previous round
+- **↩️ Undo Button** - Remove your most recent bet placement
 - **📊 Total Bet Display** - Real-time tracking of your total bet amount
-- **💵 Balance Management** - Start with ₱5,000 and manage your bankroll
+- **💵 Balance Management** - Start with ₱5,000 and manage your bankroll (balance persists across shoes)
+- **⚡ Speed Mode** - Toggle faster card reveals for quicker gameplay
+- **❓ Help Menu** - Access game rules, payout information, and how to play
+
+### Pattern Tracking & Roads
+- **Big Road** - Track Player/Banker winning streaks with red and blue circles
+- **Small Road** - Derived road comparing patterns 2 columns back
+- **Cockroach Road** - Derived road comparing patterns 3 columns back
+- **Hover Predictions** - See predicted outcomes for each road when hovering over Player/Banker
+- **Tie Tracking** - Ties displayed as green slashes on the Big Road
+- **Automatic Reset** - Roads clear when a new shoe is shuffled
+
+### Developer Tools
+- **🤖 Automated Test Mode** (Ctrl+Shift+,)
+  - Infinite balance for comprehensive testing
+  - Randomized betting patterns with all chip denominations
+  - Tests all bet types and game outcomes
+  - Tracks money won/lost, wins/losses/ties, and net profit
+  - Ultra-fast card reveals for rapid testing
+  - Pause/Resume functionality
+  - Automatic shoe reshuffle testing
 
 ### Betting Options
 1. **Player** (1:1 payout)
@@ -45,23 +71,24 @@ A professional Baccarat casino game simulator built as a standalone desktop appl
 
 1. Go to the [Releases](../../releases) page
 2. Download the appropriate file for your operating system:
-   - **Windows**: `Baccarat-Simulator-Setup-1.0.0.exe`
-   - **macOS**: `Baccarat-Simulator-1.0.0.dmg`
-   - **Linux**: `Baccarat-Simulator-1.0.0.AppImage`
+   - **Windows**: `Baccarat Simulator 1.1.0.exe` (Portable)
+   - **macOS**: `Baccarat-Simulator-1.1.0-mac.zip`
+   - **Linux**: `Baccarat-Simulator-1.1.0.AppImage`
 
 ### Installation
 
 #### Windows
-1. Download the `.exe` file
-2. Double-click to run the installer
-3. Follow the installation wizard
-4. Launch from Start Menu or Desktop shortcut
+1. Download the `.exe` file (portable - no installation required)
+2. Double-click to run the application directly
+3. Optional: Create a desktop shortcut for easy access
+4. No admin rights or installation needed!
 
 #### macOS
-1. Download the `.dmg` file
-2. Open the DMG file
+1. Download the `.zip` file
+2. Extract the archive
 3. Drag "Baccarat Simulator" to Applications folder
 4. Launch from Applications or Launchpad
+5. If you get a security warning, right-click the app and select "Open"
 
 #### Linux
 1. Download the `.AppImage` file
@@ -195,4 +222,5 @@ Created with ❤️ by [Your Name]
 ---
 
 **Disclaimer**: This is a simulation for entertainment purposes only. No real money is involved. Please gamble responsibly if you choose to play with real money at licensed establishments.
+
 
