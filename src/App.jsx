@@ -46,13 +46,26 @@ const Hand = ({ title, cards, revealedCount, showTotal }) => {
 
   const total = showTotal ? getHandValue(cards.slice(0, revealedCount)) : null;
 
+  // First two cards and third card (if exists)
+  const firstTwoCards = cards.slice(0, 2);
+  const thirdCard = cards.length > 2 ? cards[2] : null;
+
   return (
     <div className="flex flex-col items-center space-y-3">
       <h3 className="text-xl md:text-2xl font-bold text-white">{title}</h3>
-      <div className="flex gap-2 md:gap-3">
-        {cards.map((card, index) => (
-          <Card key={index} card={card} revealed={index < revealedCount} />
-        ))}
+      <div className="flex flex-col items-center gap-2 md:gap-3">
+        {/* First two cards horizontally */}
+        <div className="flex gap-2 md:gap-3">
+          {firstTwoCards.map((card, index) => (
+            <Card key={index} card={card} revealed={index < revealedCount} />
+          ))}
+        </div>
+        {/* Third card in portrait below */}
+        {thirdCard && (
+          <div>
+            <Card card={thirdCard} revealed={revealedCount >= 3} />
+          </div>
+        )}
       </div>
       {showTotal && revealedCount > 0 && (
         <div className="text-2xl md:text-3xl font-bold text-yellow-400">
@@ -63,26 +76,86 @@ const Hand = ({ title, cards, revealedCount, showTotal }) => {
   );
 };
 
+// Helper function to get chip color based on value
+const getChipColor = (value) => {
+  if (value >= 50000) return 'from-gray-900 to-black';
+  if (value >= 25000) return 'from-gray-900 to-black';
+  if (value >= 10000) return 'from-gray-900 to-black';
+  if (value >= 5000) return 'from-gray-900 to-black';
+  if (value >= 2500) return 'from-amber-900 to-amber-950';
+  if (value >= 1000) return 'from-yellow-400 to-yellow-600';
+  if (value >= 500) return 'from-orange-500 to-orange-700';
+  if (value >= 250) return 'from-green-500 to-green-700';
+  if (value >= 100) return 'from-blue-500 to-blue-700';
+  return 'from-red-500 to-red-700'; // 50
+};
+
+// Helper function to break down bet amount into chips
+const getChipBreakdown = (amount) => {
+  const chipValues = [50000, 25000, 10000, 5000, 2500, 1000, 500, 250, 100, 50];
+  const chips = [];
+  let remaining = amount;
+  
+  for (const value of chipValues) {
+    while (remaining >= value) {
+      chips.push(value);
+      remaining -= value;
+      if (chips.length >= 5) return chips; // Limit display to 5 chips
+    }
+  }
+  
+  return chips;
+};
+
+// Mini Chip Component for betting areas
+const MiniChip = ({ value, index }) => {
+  const colorClass = getChipColor(value);
+  const offset = index * 4; // Stack offset
+  
+  return (
+    <div 
+      className={`absolute w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br ${colorClass} border-2 border-white shadow-md flex items-center justify-center transition-all`}
+      style={{ 
+        bottom: `${20 + offset}px`,
+        right: `${10}px`,
+        zIndex: index + 1
+      }}
+    >
+      <span className="text-[8px] md:text-[10px] font-bold text-white">
+        {value >= 1000 ? `${value/1000}k` : value}
+      </span>
+    </div>
+  );
+};
+
 // Betting Area Component
-const BettingArea = ({ label, betAmount, onClick, isWinner }) => {
+const BettingArea = ({ title, payout, betAmount, onClick, isWinner, bgColor = 'bg-red-900' }) => {
+  const chips = betAmount > 0 ? getChipBreakdown(betAmount) : [];
+  
   return (
     <button
       onClick={onClick}
-      className={`relative p-3 md:p-4 rounded-lg border-2 transition-all ${
+      className={`relative p-3 md:p-4 rounded-lg border-2 transition-all min-h-[80px] md:min-h-[100px] ${
         isWinner 
           ? 'bg-green-600 border-yellow-400 animate-pulse' 
           : betAmount > 0 
-            ? 'bg-red-700 border-red-500' 
-            : 'bg-red-900 border-red-700'
-      } hover:bg-red-600 active:scale-95`}
+            ? `${bgColor} border-opacity-70 border-white` 
+            : `${bgColor} opacity-80 border-gray-600`
+      } hover:opacity-100 active:scale-95`}
     >
       <div className="text-white font-bold text-sm md:text-base text-center">
-        {label}
+        <div>{title}</div>
+        <div className="text-xs mt-1">{payout}</div>
       </div>
       {betAmount > 0 && (
-        <div className="mt-1 text-yellow-400 font-bold text-xs md:text-sm">
-          ₱{betAmount}
-        </div>
+        <>
+          <div className="mt-1 text-yellow-400 font-bold text-xs md:text-sm">
+            ₱{betAmount}
+          </div>
+          {chips.slice(0, 3).map((chipValue, index) => (
+            <MiniChip key={index} value={chipValue} index={index} />
+          ))}
+        </>
       )}
     </button>
   );
@@ -90,14 +163,16 @@ const BettingArea = ({ label, betAmount, onClick, isWinner }) => {
 
 // Chip Selector Component
 const ChipSelector = ({ value, selected, onClick }) => {
+  const colorClass = getChipColor(value);
+  
   return (
     <button
       onClick={onClick}
       className={`relative w-12 h-12 md:w-16 md:h-16 rounded-full font-bold text-xs md:text-sm transition-all ${
         selected
-          ? 'bg-yellow-500 text-black border-4 border-yellow-300 scale-110'
-          : 'bg-gradient-to-br from-yellow-600 to-yellow-800 text-white border-4 border-yellow-900'
-      } hover:scale-105 active:scale-95 shadow-lg`}
+          ? `bg-gradient-to-br ${colorClass} border-4 border-yellow-300 scale-110`
+          : `bg-gradient-to-br ${colorClass} border-4 border-gray-700`
+      } hover:scale-105 active:scale-95 shadow-lg text-white`}
     >
       <div className="flex flex-col items-center justify-center">
         <div className="text-[10px] md:text-xs">₱</div>
@@ -120,10 +195,12 @@ function App() {
     tie: 0,
     playerPair: 0,
     bankerPair: 0,
+    playerBonus: 0,
+    bankerBonus: 0,
     perfectPair: 0,
-    bigHand: 0,
-    smallHand: 0
+    eitherPair: 0
   });
+  const [previousBets, setPreviousBets] = useState(null);
   const [gamePhase, setGamePhase] = useState('betting');
   const [selectedChip, setSelectedChip] = useState(100);
   const [message, setMessage] = useState('Place your bets!');
@@ -212,6 +289,23 @@ function App() {
     setMessage(`₱${selectedChip} bet placed on ${betType}!`);
   };
 
+  // Handle rebet button
+  const handleRebet = () => {
+    if (!previousBets) {
+      setMessage('No previous bets to repeat!');
+      return;
+    }
+
+    const totalPreviousBets = Object.values(previousBets).reduce((a, b) => a + b, 0);
+    if (totalPreviousBets > balance) {
+      setMessage('Insufficient balance for rebet!');
+      return;
+    }
+
+    setBets({...previousBets});
+    setMessage(`Rebet placed: ₱${totalPreviousBets}`);
+  };
+
   // Handle deal button
   const handleDeal = () => {
     const totalBets = Object.values(bets).reduce((a, b) => a + b, 0);
@@ -219,6 +313,9 @@ function App() {
       setMessage('Please place at least one bet!');
       return;
     }
+
+    // Save current bets as previous bets
+    setPreviousBets({...bets});
 
     // Deduct bets from balance
     setBalance(prev => prev - totalBets);
@@ -262,16 +359,16 @@ function App() {
 
     const revealSequence = async () => {
       setRevealedPlayerCards(1);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 750));
       
       setRevealedBankerCards(1);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 750));
       
       setRevealedPlayerCards(2);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 750));
       
       setRevealedBankerCards(2);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 750));
 
       // Check for naturals
       if (checkNatural(playerHand) || checkNatural(bankerHand)) {
@@ -397,7 +494,10 @@ function App() {
       }
 
       // Check pair bets
-      if (isPair(playerHand)) {
+      const playerHasPair = isPair(playerHand);
+      const bankerHasPair = isPair(bankerHand);
+
+      if (playerHasPair) {
         if (isPerfectPair(playerHand)) {
           if (bets.perfectPair > 0) {
             winnings += bets.perfectPair * 26; // 25:1 payout
@@ -410,7 +510,7 @@ function App() {
         }
       }
 
-      if (isPair(bankerHand)) {
+      if (bankerHasPair) {
         if (isPerfectPair(bankerHand) && !winners.includes('perfectPair')) {
           if (bets.perfectPair > 0) {
             winnings += bets.perfectPair * 26;
@@ -423,16 +523,33 @@ function App() {
         }
       }
 
-      // Check big/small hand
-      if (totalCards === 4) {
-        if (bets.smallHand > 0) {
-          winnings += bets.smallHand * 2.5; // 1.5:1 payout
-          winners.push('smallHand');
+      // Check either pair (wins if either hand has a pair)
+      if ((playerHasPair || bankerHasPair) && bets.eitherPair > 0) {
+        winnings += bets.eitherPair * 6; // 5:1 payout
+        winners.push('eitherPair');
+      }
+
+      // Check player bonus (wins with natural 8 or 9, or winning by 4+ points)
+      if (playerValue > bankerValue) {
+        const margin = playerValue - bankerValue;
+        if (playerValue >= 8 || margin >= 4) {
+          if (bets.playerBonus > 0) {
+            const multiplier = playerValue === 9 ? 31 : playerValue === 8 ? 11 : margin >= 4 ? 2 : 1;
+            winnings += bets.playerBonus * multiplier;
+            winners.push('playerBonus');
+          }
         }
-      } else if (totalCards === 5 || totalCards === 6) {
-        if (bets.bigHand > 0) {
-          winnings += bets.bigHand * 1.54; // 0.54:1 payout
-          winners.push('bigHand');
+      }
+
+      // Check banker bonus (wins with natural 8 or 9, or winning by 4+ points)
+      if (bankerValue > playerValue) {
+        const margin = bankerValue - playerValue;
+        if (bankerValue >= 8 || margin >= 4) {
+          if (bets.bankerBonus > 0) {
+            const multiplier = bankerValue === 9 ? 31 : bankerValue === 8 ? 11 : margin >= 4 ? 2 : 1;
+            winnings += bets.bankerBonus * multiplier;
+            winners.push('bankerBonus');
+          }
         }
       }
 
@@ -467,9 +584,10 @@ function App() {
       tie: 0,
       playerPair: 0,
       bankerPair: 0,
+      playerBonus: 0,
+      bankerBonus: 0,
       perfectPair: 0,
-      bigHand: 0,
-      smallHand: 0
+      eitherPair: 0
     });
     setPlayerHand([]);
     setBankerHand([]);
@@ -488,6 +606,9 @@ function App() {
     setMessage('Game restarted! Good luck!');
   };
 
+  // Calculate total bet
+  const totalBet = Object.values(bets).reduce((a, b) => a + b, 0);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-2 md:p-4">
       <div className="max-w-7xl mx-auto">
@@ -498,8 +619,13 @@ function App() {
               <h1 className="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">
                 Baccarat
               </h1>
-              <div className="text-lg md:text-xl text-white">
-                Balance: <span className="text-green-400 font-bold">₱{balance}</span>
+              <div className="text-lg md:text-xl text-white flex gap-6">
+                <div>
+                  Balance: <span className="text-green-400 font-bold">₱{balance}</span>
+                </div>
+                <div>
+                  Total Bet: <span className="text-yellow-400 font-bold">₱{totalBet}</span>
+                </div>
               </div>
               <div className="text-sm md:text-base text-gray-400">
                 Cards in shoe: {shoe.length}
@@ -543,55 +669,99 @@ function App() {
             Place Your Bets
           </h2>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-            <BettingArea 
-              label="PLAYER (1:1)" 
-              betAmount={bets.player}
-              onClick={() => placeBet('player')}
-              isWinner={winningBets.includes('player')}
-            />
-            <BettingArea 
-              label="BANKER (0.95:1)" 
-              betAmount={bets.banker}
-              onClick={() => placeBet('banker')}
-              isWinner={winningBets.includes('banker')}
-            />
-            <BettingArea 
-              label="TIE (8:1)" 
-              betAmount={bets.tie}
-              onClick={() => placeBet('tie')}
-              isWinner={winningBets.includes('tie')}
-            />
-            <BettingArea 
-              label="PLAYER PAIR (11:1)" 
-              betAmount={bets.playerPair}
-              onClick={() => placeBet('playerPair')}
-              isWinner={winningBets.includes('playerPair')}
-            />
-            <BettingArea 
-              label="BANKER PAIR (11:1)" 
-              betAmount={bets.bankerPair}
-              onClick={() => placeBet('bankerPair')}
-              isWinner={winningBets.includes('bankerPair')}
-            />
-            <BettingArea 
-              label="PERFECT PAIR (25:1)" 
-              betAmount={bets.perfectPair}
-              onClick={() => placeBet('perfectPair')}
-              isWinner={winningBets.includes('perfectPair')}
-            />
-            <BettingArea 
-              label="BIG HAND (0.54:1)" 
-              betAmount={bets.bigHand}
-              onClick={() => placeBet('bigHand')}
-              isWinner={winningBets.includes('bigHand')}
-            />
-            <BettingArea 
-              label="SMALL HAND (1.5:1)" 
-              betAmount={bets.smallHand}
-              onClick={() => placeBet('smallHand')}
-              isWinner={winningBets.includes('smallHand')}
-            />
+          {/* Professional Baccarat Table Layout */}
+          <div className="grid grid-cols-4 gap-3 mb-6">
+            {/* Top Row - Pair Bets */}
+            <div className="col-span-4 flex">
+              <div style={{ flex: '0 0 calc(25% - 6px)' }}>
+                <BettingArea 
+                  title="P PAIR" 
+                  payout="11:1"
+                  betAmount={bets.playerPair}
+                  onClick={() => placeBet('playerPair')}
+                  isWinner={winningBets.includes('playerPair')}
+                  bgColor="bg-blue-800"
+                />
+              </div>
+              <div style={{ flex: '1' }}></div>
+              <div style={{ flex: '0 0 calc(25% - 6px)' }}>
+                <BettingArea 
+                  title="B PAIR" 
+                  payout="11:1"
+                  betAmount={bets.bankerPair}
+                  onClick={() => placeBet('bankerPair')}
+                  isWinner={winningBets.includes('bankerPair')}
+                  bgColor="bg-red-800"
+                />
+              </div>
+            </div>
+
+            {/* Main Betting Row */}
+            <div className="col-span-1 flex flex-col gap-3">
+              <BettingArea 
+                title="P BONUS" 
+                payout="1-30:1"
+                betAmount={bets.playerBonus}
+                onClick={() => placeBet('playerBonus')}
+                isWinner={winningBets.includes('playerBonus')}
+                bgColor="bg-blue-900"
+              />
+              <BettingArea 
+                title="PERFECT PAIR" 
+                payout="25:1"
+                betAmount={bets.perfectPair}
+                onClick={() => placeBet('perfectPair')}
+                isWinner={winningBets.includes('perfectPair')}
+                bgColor="bg-amber-900"
+              />
+            </div>
+
+            {/* Center - Main Bets */}
+            <div className="col-span-2 grid grid-cols-3 gap-2">
+              <BettingArea 
+                title="PLAYER" 
+                payout="1:1"
+                betAmount={bets.player}
+                onClick={() => placeBet('player')}
+                isWinner={winningBets.includes('player')}
+                bgColor="bg-blue-700"
+              />
+              <BettingArea 
+                title="TIE" 
+                payout="8:1"
+                betAmount={bets.tie}
+                onClick={() => placeBet('tie')}
+                isWinner={winningBets.includes('tie')}
+                bgColor="bg-green-700"
+              />
+              <BettingArea 
+                title="BANKER" 
+                payout="0.95:1"
+                betAmount={bets.banker}
+                onClick={() => placeBet('banker')}
+                isWinner={winningBets.includes('banker')}
+                bgColor="bg-red-700"
+              />
+            </div>
+
+            <div className="col-span-1 flex flex-col gap-3">
+              <BettingArea 
+                title="B BONUS" 
+                payout="1-30:1"
+                betAmount={bets.bankerBonus}
+                onClick={() => placeBet('bankerBonus')}
+                isWinner={winningBets.includes('bankerBonus')}
+                bgColor="bg-red-900"
+              />
+              <BettingArea 
+                title="EITHER PAIR" 
+                payout="5:1"
+                betAmount={bets.eitherPair}
+                onClick={() => placeBet('eitherPair')}
+                isWinner={winningBets.includes('eitherPair')}
+                bgColor="bg-amber-950"
+              />
+            </div>
           </div>
 
           {/* Chip Selector */}
@@ -614,12 +784,21 @@ function App() {
           {/* Control Buttons */}
           <div className="flex flex-col md:flex-row gap-3 md:gap-4 justify-center">
             {gamePhase === 'betting' && (
-              <button
-                onClick={handleDeal}
-                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-bold rounded-lg transition-all active:scale-95 shadow-lg"
-              >
-                DEAL
-              </button>
+              <>
+                <button
+                  onClick={handleRebet}
+                  disabled={!previousBets}
+                  className="px-8 py-4 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-xl font-bold rounded-lg transition-all active:scale-95 shadow-lg"
+                >
+                  REBET
+                </button>
+                <button
+                  onClick={handleDeal}
+                  className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-bold rounded-lg transition-all active:scale-95 shadow-lg"
+                >
+                  DEAL
+                </button>
+              </>
             )}
             {gamePhase === 'payout' && (
               <button
