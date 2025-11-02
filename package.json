@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5174 && electron .\"",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "npm run build && electron-builder"
   },
   "build": {
@@ -25,11 +25,11 @@
       "package.json"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": ["portable"],
       "icon": "build/icon.ico"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": ["zip"],
       "icon": "build/icon.icns",
       "category": "public.app-category.games"
     },
@@ -37,7 +37,8 @@
       "target": ["AppImage"],
       "icon": "build/icon.png",
       "category": "Game"
-    }
+    },
+    "forceCodeSigning": false
   },
   "dependencies": {
     "react": "^18.2.0",

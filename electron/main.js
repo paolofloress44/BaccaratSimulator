@@ -22,7 +22,7 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   } else {
     // In development, load from the Vite dev server
-    mainWindow.loadURL('http://localhost:5174');
+    mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   }
 

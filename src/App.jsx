@@ -182,6 +182,144 @@ const ChipSelector = ({ value, selected, onClick }) => {
   );
 };
 
+// Toggle Switch Component
+const ToggleSwitch = ({ enabled, onToggle, label }) => {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-white text-sm font-medium">{label}</span>
+      <button
+        onClick={onToggle}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          enabled ? 'bg-green-500' : 'bg-gray-600'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            enabled ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+  );
+};
+
+// Help Modal Component
+const HelpModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-lg max-w-4xl max-h-[90vh] overflow-y-auto p-6 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-white text-2xl hover:text-red-500 transition-colors"
+        >
+          ✕
+        </button>
+        
+        <h2 className="text-3xl font-bold text-yellow-400 mb-6">Baccarat Game Guide</h2>
+        
+        {/* How to Play */}
+        <section className="mb-6">
+          <h3 className="text-2xl font-bold text-white mb-3">📖 How to Play</h3>
+          <div className="text-gray-300 space-y-2">
+            <p><strong>Objective:</strong> Bet on which hand (Player or Banker) will have a total closest to 9.</p>
+            <p><strong>Card Values:</strong></p>
+            <ul className="list-disc list-inside ml-4">
+              <li>Aces = 1 point</li>
+              <li>2-9 = Face value</li>
+              <li>10, J, Q, K = 0 points</li>
+            </ul>
+            <p><strong>Hand Value:</strong> Sum of cards modulo 10 (e.g., 7+8=15 → value is 5)</p>
+          </div>
+        </section>
+
+        {/* Betting Options */}
+        <section className="mb-6">
+          <h3 className="text-2xl font-bold text-white mb-3">💰 Payout System</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-gray-300">
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-blue-400">Player:</strong> 1:1 payout
+            </div>
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-red-400">Banker:</strong> 0.95:1 (or 1:1 in No Commission mode)
+            </div>
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-green-400">Tie:</strong> 8:1 payout
+            </div>
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-blue-300">Player Pair:</strong> 11:1 payout
+            </div>
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-red-300">Banker Pair:</strong> 11:1 payout
+            </div>
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-yellow-400">Perfect Pair:</strong> 25:1 payout
+            </div>
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-blue-300">Player Bonus:</strong> 1-30:1 (based on margin)
+            </div>
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-red-300">Banker Bonus:</strong> 1-30:1 (based on margin)
+            </div>
+            <div className="bg-gray-700 p-3 rounded">
+              <strong className="text-amber-400">Either Pair:</strong> 5:1 payout
+            </div>
+          </div>
+        </section>
+
+        {/* Third Card Rules */}
+        <section className="mb-6">
+          <h3 className="text-2xl font-bold text-white mb-3">🎴 Third Card Rules</h3>
+          <div className="text-gray-300 space-y-2">
+            <p><strong>Player's Rule:</strong></p>
+            <ul className="list-disc list-inside ml-4">
+              <li>0-5: Draws a third card</li>
+              <li>6-7: Stands</li>
+              <li>8-9: Natural (no more cards)</li>
+            </ul>
+            <p className="mt-3"><strong>Banker's Rule:</strong> Depends on Player's third card (applied automatically)</p>
+          </div>
+        </section>
+
+        {/* No Commission Mode */}
+        <section className="mb-6">
+          <h3 className="text-2xl font-bold text-white mb-3">🎯 No Commission Baccarat</h3>
+          <div className="text-gray-300 space-y-2">
+            <p>When No Commission mode is enabled:</p>
+            <ul className="list-disc list-inside ml-4">
+              <li>Banker pays 1:1 (no 5% commission)</li>
+              <li>Exception: Banker wins with 6 pays only 0.5:1</li>
+            </ul>
+          </div>
+        </section>
+
+        {/* Game Features */}
+        <section>
+          <h3 className="text-2xl font-bold text-white mb-3">✨ Game Features</h3>
+          <div className="text-gray-300 space-y-2">
+            <ul className="list-disc list-inside ml-4">
+              <li><strong>REBET:</strong> Quickly place the same bets as your previous round</li>
+              <li><strong>Colored Chips:</strong> Each denomination has a unique color</li>
+              <li><strong>Visual Chip Stacking:</strong> See your bets displayed as chips on the table</li>
+              <li><strong>Realistic Card Reveals:</strong> Cards are revealed one by one with proper timing</li>
+            </ul>
+          </div>
+        </section>
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={onClose}
+            className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all"
+          >
+            Got it!
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main App Component
 function App() {
   // Game State
@@ -207,6 +345,9 @@ function App() {
   const [revealedPlayerCards, setRevealedPlayerCards] = useState(0);
   const [revealedBankerCards, setRevealedBankerCards] = useState(0);
   const [winningBets, setWinningBets] = useState([]);
+  const [noCommission, setNoCommission] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [betHistory, setBetHistory] = useState([]);
 
   const chipValues = [50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 
@@ -282,11 +423,33 @@ function App() {
       return;
     }
 
+    // Track bet in history for undo
+    setBetHistory(prev => [...prev, { betType, amount: selectedChip }]);
+
     setBets(prev => ({
       ...prev,
       [betType]: prev[betType] + selectedChip
     }));
     setMessage(`₱${selectedChip} bet placed on ${betType}!`);
+  };
+
+  // Handle undo last bet
+  const handleUndo = () => {
+    if (betHistory.length === 0) {
+      setMessage('No bets to undo!');
+      return;
+    }
+    if (gamePhase !== 'betting') return;
+
+    const lastBet = betHistory[betHistory.length - 1];
+    setBetHistory(prev => prev.slice(0, -1));
+    
+    setBets(prev => ({
+      ...prev,
+      [lastBet.betType]: prev[lastBet.betType] - lastBet.amount
+    }));
+    
+    setMessage(`Undone: ₱${lastBet.amount} removed from ${lastBet.betType}`);
   };
 
   // Handle rebet button
@@ -480,7 +643,16 @@ function App() {
       } else if (bankerValue > playerValue) {
         resultMessage = `Banker wins with ${bankerValue}!`;
         if (bets.banker > 0) {
-          winnings += bets.banker * 1.95; // 0.95:1 payout
+          // No commission: full payout except banker wins with 6
+          if (noCommission) {
+            if (bankerValue === 6) {
+              winnings += bets.banker * 1.5; // 0.5:1 payout for banker 6
+            } else {
+              winnings += bets.banker * 2; // 1:1 payout
+            }
+          } else {
+            winnings += bets.banker * 1.95; // 0.95:1 payout (standard)
+          }
           winners.push('banker');
         }
       } else {
@@ -589,6 +761,7 @@ function App() {
       perfectPair: 0,
       eitherPair: 0
     });
+    setBetHistory([]);
     setPlayerHand([]);
     setBankerHand([]);
     setRevealedPlayerCards(0);
@@ -616,9 +789,17 @@ function App() {
         <div className="bg-gray-800 rounded-lg p-4 md:p-6 mb-4 shadow-xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">
-                Baccarat
-              </h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl md:text-4xl font-bold text-yellow-400">
+                  Baccarat
+                </h1>
+                <button
+                  onClick={() => setShowHelp(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all active:scale-95 text-sm"
+                >
+                  ❓ Help
+                </button>
+              </div>
               <div className="text-lg md:text-xl text-white flex gap-6">
                 <div>
                   Balance: <span className="text-green-400 font-bold">₱{balance}</span>
@@ -631,12 +812,19 @@ function App() {
                 Cards in shoe: {shoe.length}
               </div>
             </div>
-            <button
-              onClick={handleRestart}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-all active:scale-95"
-            >
-              Restart Game
-            </button>
+            <div className="flex flex-col gap-3 items-end">
+              <ToggleSwitch 
+                enabled={noCommission}
+                onToggle={() => setNoCommission(!noCommission)}
+                label="No Commission"
+              />
+              <button
+                onClick={handleRestart}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-all active:scale-95"
+              >
+                Restart Game
+              </button>
+            </div>
           </div>
         </div>
 
@@ -671,33 +859,16 @@ function App() {
           
           {/* Professional Baccarat Table Layout */}
           <div className="grid grid-cols-4 gap-3 mb-6">
-            {/* Top Row - Pair Bets */}
-            <div className="col-span-4 flex">
-              <div style={{ flex: '0 0 calc(25% - 6px)' }}>
-                <BettingArea 
-                  title="P PAIR" 
-                  payout="11:1"
-                  betAmount={bets.playerPair}
-                  onClick={() => placeBet('playerPair')}
-                  isWinner={winningBets.includes('playerPair')}
-                  bgColor="bg-blue-800"
-                />
-              </div>
-              <div style={{ flex: '1' }}></div>
-              <div style={{ flex: '0 0 calc(25% - 6px)' }}>
-                <BettingArea 
-                  title="B PAIR" 
-                  payout="11:1"
-                  betAmount={bets.bankerPair}
-                  onClick={() => placeBet('bankerPair')}
-                  isWinner={winningBets.includes('bankerPair')}
-                  bgColor="bg-red-800"
-                />
-              </div>
-            </div>
-
             {/* Main Betting Row */}
             <div className="col-span-1 flex flex-col gap-3">
+              <BettingArea 
+                title="P PAIR" 
+                payout="11:1"
+                betAmount={bets.playerPair}
+                onClick={() => placeBet('playerPair')}
+                isWinner={winningBets.includes('playerPair')}
+                bgColor="bg-blue-800"
+              />
               <BettingArea 
                 title="P BONUS" 
                 payout="1-30:1"
@@ -736,7 +907,7 @@ function App() {
               />
               <BettingArea 
                 title="BANKER" 
-                payout="0.95:1"
+                payout={noCommission ? "1:1 (0.5:1 on 6)" : "0.95:1"}
                 betAmount={bets.banker}
                 onClick={() => placeBet('banker')}
                 isWinner={winningBets.includes('banker')}
@@ -745,6 +916,14 @@ function App() {
             </div>
 
             <div className="col-span-1 flex flex-col gap-3">
+              <BettingArea 
+                title="B PAIR" 
+                payout="11:1"
+                betAmount={bets.bankerPair}
+                onClick={() => placeBet('bankerPair')}
+                isWinner={winningBets.includes('bankerPair')}
+                bgColor="bg-red-800"
+              />
               <BettingArea 
                 title="B BONUS" 
                 payout="1-30:1"
@@ -786,6 +965,13 @@ function App() {
             {gamePhase === 'betting' && (
               <>
                 <button
+                  onClick={handleUndo}
+                  disabled={betHistory.length === 0}
+                  className="px-8 py-4 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-xl font-bold rounded-lg transition-all active:scale-95 shadow-lg"
+                >
+                  ↶ UNDO
+                </button>
+                <button
                   onClick={handleRebet}
                   disabled={!previousBets}
                   className="px-8 py-4 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-xl font-bold rounded-lg transition-all active:scale-95 shadow-lg"
@@ -816,6 +1002,9 @@ function App() {
           <p>Baccarat Game Simulator • Play Responsibly</p>
         </div>
       </div>
+
+      {/* Help Modal */}
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
 }
