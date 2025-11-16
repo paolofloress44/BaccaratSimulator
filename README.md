@@ -44,6 +44,15 @@ A professional Baccarat casino game simulator built as a standalone desktop appl
 - **Tie Tracking** - Ties displayed as green slashes on the Big Road
 - **Automatic Reset** - Roads clear when a new shoe is shuffled
 
+### AI Chatbot - Mr. Degen
+- **🎰 Mr. Degen AI Assistant** - Chat with a seasoned gambler AI for tips and analysis
+  - Uses Google Gemini API (or Ollama as fallback)
+  - Strategic advice costs ₱500 per question
+  - Free for casual questions and rule explanations
+  - Has access to current game state, patterns, and card counts
+  - Provides both "smart" statistical advice and "gut" feelings based on patterns
+  - Characterful casino slang and personality
+
 ### Developer Tools
 - **🤖 Automated Test Mode** (Ctrl+Shift+,)
   - Infinite balance for comprehensive testing
@@ -148,6 +157,25 @@ npm install
 npm run dev
 ```
 
+### Setting Up Mr. Degen AI Chatbot
+
+The chatbot supports two AI backends:
+
+**Option 1: Google Gemini (Recommended)**
+1. Get a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Create a `.env` file in the project root:
+   ```
+   VITE_GOOGLE_AI_API_KEY=your_api_key_here
+   ```
+3. Restart the dev server
+4. The chatbot will use Google Gemini automatically
+
+**Option 2: Ollama (Local)**
+1. Install [Ollama](https://ollama.ai/)
+2. Pull the model: `ollama pull llama3:8b`
+3. Start Ollama server (usually runs automatically)
+4. The chatbot will use Ollama if no Google API key is set
+
 ### Building from Source
 
 ```bash
@@ -170,6 +198,8 @@ The built applications will be in the `release/` folder.
 - **Tailwind CSS** - Styling and responsive design
 - **Electron** - Desktop application wrapper
 - **JavaScript** - Game logic
+- **Google Generative AI** - AI chatbot backend (Gemini API)
+- **Ollama** - Alternative local AI backend (optional)
 
 ## 📦 Project Structure
 

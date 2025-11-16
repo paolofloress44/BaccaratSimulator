@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Card Component
 const Card = ({ card, revealed }) => {
@@ -234,11 +235,12 @@ const calculateDerivativeRoadFromColumns = (bigRoadData, lookbackDistance) => {
   const colors = [];
   
   // Start from the column at position (lookbackDistance), compare with column X-lookbackDistance
+  // Process ALL columns, including those with more than 6 entries
   for (let colIndex = lookbackDistance; colIndex < bigRoadData.length; colIndex++) {
     const currentColumn = bigRoadData[colIndex];
     const compareColumn = bigRoadData[colIndex - lookbackDistance];
     
-    // Compare heights (number of entries in each column)
+    // Compare heights (number of entries in each column) - use full count, not display limit
     const currentHeight = currentColumn.entries.length;
     const compareHeight = compareColumn.entries.length;
     
@@ -257,7 +259,7 @@ const calculateDerivativeRoadFromColumns = (bigRoadData, lookbackDistance) => {
       currentColumn = { color, count: 1 };
       columns.push(currentColumn);
     } else {
-      // Same color = extend current column (go down)
+      // Same color = extend current column (go down) - no limit on count
       currentColumn.count++;
     }
   });
@@ -445,7 +447,7 @@ const SmallRoad = ({ bigRoadData, predictedOutcome }) => {
                     }`}
                   />
                 ))}
-                {showPredictionHere && column.count < 6 && (
+                {showPredictionHere && (
                   <div
                     className={`w-4 h-4 rounded-full border opacity-50 animate-pulse ${
                       predictedColor === 'red'
@@ -517,7 +519,7 @@ const CockroachRoad = ({ bigRoadData, predictedOutcome }) => {
                     /
                   </div>
                 ))}
-                {showPredictionHere && column.count < 6 && (
+                {showPredictionHere && (
                   <div
                     className={`w-4 h-4 flex items-center justify-center opacity-50 animate-pulse ${
                       predictedColor === 'red' ? 'text-red-500' : 'text-blue-500'
@@ -636,6 +638,174 @@ const AutomatedTestPanel = ({ isOpen, testRunning, testPaused, testResults, onSt
       <p className="text-xs text-gray-400 mt-2 text-center">
         Infinite balance • Random bets • Speed mode
       </p>
+    </div>
+  );
+};
+
+// Chat Toggle Button Component
+const ChatToggleButton = ({ onClick, hasUnread = false }) => {
+  return (
+    <button
+      onClick={onClick}
+      className="fixed bottom-6 left-6 w-16 h-16 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full border-4 border-yellow-500 shadow-2xl hover:scale-110 active:scale-95 transition-all z-40 flex items-center justify-center group"
+      title="Chat with Mr. Degen"
+    >
+      <div className="text-3xl">🎰</div>
+      {hasUnread && (
+        <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white"></div>
+      )}
+    </button>
+  );
+};
+
+// Chat Window Component (Modal Overlay)
+const ChatWindow = ({ isOpen, onClose, messages, isLoading, onSendMessage, balance }) => {
+  const [inputValue, setInputValue] = useState('');
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    // Handle Escape key to close chat
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      // Focus input when chat opens
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (inputValue.trim() && !isLoading) {
+      onSendMessage(inputValue.trim());
+      setInputValue('');
+      // Refocus input after sending
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl border-4 border-yellow-500"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-4 rounded-t-lg border-b-2 border-yellow-500 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">🎰</div>
+            <div>
+              <h2 className="text-2xl font-bold text-yellow-400">Mr. Degen</h2>
+              <p className="text-xs text-gray-400">Ask me anything</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white text-2xl hover:text-red-500 transition-colors px-2"
+            title="Close (Esc)"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900">
+          {messages.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <p className="text-lg mb-2">👋 Hey there, player!</p>
+              <p className="text-sm">Ask me anything about Baccarat.</p>
+            </div>
+          ) : (
+            messages.map((msg, index) => {
+              if (msg.isSystem) {
+                return (
+                  <div key={index} className="text-center text-yellow-400 text-sm py-1">
+                    {msg.content}
+                  </div>
+                );
+              }
+
+              if (msg.role === 'user') {
+                return (
+                  <div key={index} className="flex justify-end">
+                    <div className="bg-blue-600 text-white rounded-lg px-4 py-2 max-w-[75%] shadow-md">
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (msg.role === 'assistant') {
+                return (
+                  <div key={index} className="flex justify-start items-start gap-2">
+                    <div className="text-2xl flex-shrink-0">🎰</div>
+                    <div className="bg-gray-700 text-white rounded-lg px-4 py-2 max-w-[75%] shadow-md">
+                      <p className={`text-sm whitespace-pre-wrap ${msg.isError ? 'text-red-400' : ''}`}>
+                        {msg.content}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+
+              return null;
+            })
+          )}
+          {isLoading && (
+            <div className="flex justify-start items-start gap-2">
+              <div className="text-2xl flex-shrink-0">🎰</div>
+              <div className="bg-gray-700 text-white rounded-lg px-4 py-2 shadow-md">
+                <p className="text-sm text-gray-400">Mr. Degen is thinking...</p>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Area */}
+        <form onSubmit={handleSubmit} className="p-4 bg-gray-800 border-t-2 border-gray-700">
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Ask Mr. Degen anything..."
+              className="flex-1 bg-gray-900 text-white rounded-lg px-4 py-2 border-2 border-gray-600 focus:border-yellow-500 focus:outline-none"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !inputValue.trim()}
+              className="px-6 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all"
+            >
+              Send
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Press Enter to send • Esc to close • Balance: ₱{balance}
+          </p>
+        </form>
+      </div>
     </div>
   );
 };
@@ -816,6 +986,12 @@ function App() {
   });
   const [balanceBeforeBet, setBalanceBeforeBet] = useState(0);
   const [predictedOutcome, setPredictedOutcome] = useState(null); // 'player' or 'banker'
+  
+  // Chat State
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatError, setChatError] = useState(null);
 
   const chipValues = [50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 
@@ -973,6 +1149,7 @@ function App() {
       const newShoe = createShoe();
       setShoe(newShoe);
       setBigRoadData([]); // Clear pattern tracking roads for new shoe
+      setChatMessages([]); // Reset chat history for new shoe
       setMessage(`New shoe shuffled! Your balance: ₱${balance - totalBets}`);
       setTimeout(() => dealInitialCardsWithShoe(newShoe), 1000);
     } else {
@@ -1319,6 +1496,7 @@ function App() {
     setWinningBets([]);
     setGamePhase('betting');
     setMessage('Place your bets!');
+    // Chat history persists across rounds - only resets on new shoe
   };
 
   // Restart game
@@ -1326,6 +1504,7 @@ function App() {
     setBalance(5000);
     setShoe(createShoe());
     setBigRoadData([]); // Clear road history on restart
+    setChatMessages([]); // Reset chat history on restart
     handleNewRound();
     setMessage('Game restarted! Good luck!');
   };
@@ -1518,6 +1697,351 @@ function App() {
 
   // Calculate total bet
   const totalBet = Object.values(bets).reduce((a, b) => a + b, 0);
+
+  // Card counting helper - count cards that have been drawn
+  const getCardCounts = () => {
+    const totalCards = 416; // 8 decks * 52 cards
+    const cardsDrawn = totalCards - shoe.length;
+    const suits = ['♥', '♦', '♣', '♠'];
+    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    
+    // Count cards by rank
+    const rankCounts = {};
+    ranks.forEach(rank => rankCounts[rank] = 0);
+    
+    // Count cards by value (for Baccarat)
+    const valueCounts = {
+      '0': 0, // 10, J, Q, K
+      '1': 0, // A
+      '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0
+    };
+    
+    // We can't track exact cards drawn, but we can track what's left
+    // For simplicity, we'll provide remaining cards info
+    const cardsRemaining = shoe.length;
+    const cardsDrawnCount = cardsDrawn;
+    
+    return {
+      totalCards,
+      cardsRemaining,
+      cardsDrawn: cardsDrawnCount,
+      percentageRemaining: ((cardsRemaining / totalCards) * 100).toFixed(1)
+    };
+  };
+
+  // Get recent game results for context
+  const getRecentResults = () => {
+    if (bigRoadData.length === 0) return 'No results yet';
+    
+    const lastFew = bigRoadData.slice(-10).map(col => ({
+      outcome: col.outcome,
+      streak: col.entries.length
+    }));
+    
+    return lastFew;
+  };
+
+  // Build game state context string for AI
+  const buildGameStateContext = () => {
+    const cardCounts = getCardCounts();
+    const recentResults = getRecentResults();
+    const smallRoad = calculateSmallRoad(bigRoadData);
+    const cockroachRoad = calculateCockroachRoad(bigRoadData);
+    
+    let context = `Current Game State:\n`;
+    context += `- Balance: ₱${balance}\n`;
+    context += `- Cards remaining in shoe: ${cardCounts.cardsRemaining} (${cardCounts.percentageRemaining}%)\n`;
+    context += `- Cards drawn: ${cardCounts.cardsDrawn}\n`;
+    context += `- Current bets: Player: ₱${bets.player}, Banker: ₱${bets.banker}, Tie: ₱${bets.tie}\n`;
+    context += `- Game phase: ${gamePhase}\n`;
+    context += `- No Commission mode: ${noCommission ? 'Yes' : 'No'}\n`;
+    context += `- Big Road columns: ${bigRoadData.length}\n`;
+    
+    if (bigRoadData.length > 0) {
+      const lastColumn = bigRoadData[bigRoadData.length - 1];
+      context += `- Last result: ${lastColumn.outcome} (streak: ${lastColumn.entries.length})\n`;
+    }
+    
+    if (recentResults !== 'No results yet') {
+      context += `- Recent results (last 10): ${recentResults.map(r => `${r.outcome}(${r.streak})`).join(', ')}\n`;
+    }
+    
+    if (smallRoad.length > 0) {
+      const lastSmallRoad = smallRoad[smallRoad.length - 1];
+      context += `- Small Road last: ${lastSmallRoad.color} (count: ${lastSmallRoad.count})\n`;
+    }
+    
+    if (cockroachRoad.length > 0) {
+      const lastCockroach = cockroachRoad[cockroachRoad.length - 1];
+      context += `- Cockroach Road last: ${lastCockroach.color} (count: ${lastCockroach.count})\n`;
+    }
+    
+    if (playerHand.length > 0 && revealedPlayerCards > 0) {
+      const playerValue = getHandValue(playerHand);
+      context += `- Current Player hand value: ${playerValue}\n`;
+    }
+    
+    if (bankerHand.length > 0 && revealedBankerCards > 0) {
+      const bankerValue = getHandValue(bankerHand);
+      context += `- Current Banker hand value: ${bankerValue}\n`;
+    }
+    
+    return context;
+  };
+
+  // Check if question is "difficult" (requires payment)
+  const isDifficultQuestion = (message) => {
+    const lowerMessage = message.toLowerCase();
+    const difficultKeywords = [
+      'what should',
+      'next move',
+      'next pattern',
+      'what do you think',
+      'should i',
+      'advice',
+      'recommendation',
+      'prediction',
+      'analysis',
+      'what would you',
+      'what\'s your',
+      'tell me what',
+      'help me decide',
+      'what pattern',
+      'what bet',
+      'which bet'
+    ];
+    
+    return difficultKeywords.some(keyword => lowerMessage.includes(keyword));
+  };
+
+  // Send message to AI API (Google Gemini or Ollama fallback)
+  const sendMessageToAI = async (userMessage) => {
+    setIsLoading(true);
+    setChatError(null);
+    
+    try {
+      const gameStateContext = buildGameStateContext();
+      
+      const systemPrompt = `You are "Mr. Degen," a seasoned gambler who's been at this Baccarat table for a while. You're knowledgeable but slightly cynical, and you've seen plenty of action.
+
+**Your Core Beliefs:**
+1. **You are an expert on Baccarat:** You know all the rules, the payouts, and the exact "textbook" odds (e.g., Banker house edge is 1.06%). You MUST provide these facts correctly when asked.
+2. **You ALSO believe in the "Gambler's Fallacy":** This is your flaw. You personally believe in "hot streaks," "cold streaks," and that the patterns on the roads (Big Road, Small Road, Cockroach Road) mean something.
+3. **You give both:** You'll tell the user the "smart" play, but you'll also tell them what your "gut" says based on the patterns.
+
+**Your Personality:**
+* Use casino slang occasionally. (e.g., "The book tells ya...", "That's a sucker bet," "Don't go bust.")
+* You're somewhat sarcastic and world-weary, but helpful.
+* You are NOT a "responsible gaming" bot. You're a degen. You wouldn't tell someone to "stop gambling."
+* You are here to watch the game with the user and comment on it.
+* **IMPORTANT:** Be natural and conversational. Avoid repetitive phrases like "now I know what you're thinking" or formulaic response patterns. Vary your responses and speak naturally.
+
+**Current Game Context:**
+${gameStateContext}
+
+Use this context to provide relevant advice. Reference specific patterns, streaks, and game state when giving your "gut" feelings.`;
+
+      // Try Google Gemini first, fallback to Ollama
+      const googleApiKey = import.meta.env.VITE_GOOGLE_AI_API_KEY;
+      let assistantMessage = ''; // Declare at function scope so it's accessible in catch block
+
+      // Try Google Gemini first if API key is set and valid
+      if (googleApiKey && googleApiKey !== 'your_api_key_here' && googleApiKey.trim() !== '') {
+        let googleWorked = false;
+        try {
+          const genAI = new GoogleGenerativeAI(googleApiKey);
+          
+          // Try different models in order of preference
+          // Note: Some models may require API access approval
+          const modelNames = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-pro-vision'];
+          let model = null;
+          let lastModelError = null;
+          
+          for (const modelName of modelNames) {
+            try {
+              model = genAI.getGenerativeModel({ model: modelName });
+              
+              // Build the full prompt with system instruction and conversation history
+              let fullPrompt = systemPrompt + '\n\n';
+              
+              // Add conversation history
+              if (chatMessages.length > 0) {
+                fullPrompt += 'Previous conversation:\n';
+                chatMessages
+                  .filter(msg => msg.role !== 'system')
+                  .forEach(msg => {
+                    if (msg.role === 'user') {
+                      fullPrompt += `User: ${msg.content}\n`;
+                    } else if (msg.role === 'assistant') {
+                      fullPrompt += `Mr. Degen: ${msg.content}\n`;
+                    }
+                  });
+                fullPrompt += '\n';
+              }
+              
+              // Add current user message
+              fullPrompt += `User: ${userMessage}\n\nMr. Degen:`;
+
+              // Try to generate content with this model
+              const result = await model.generateContent(fullPrompt);
+              const responseText = result.response.text();
+              if (responseText && responseText.trim()) {
+                assistantMessage = responseText;
+                googleWorked = true;
+                console.log(`Successfully used model: ${modelName}`);
+                break; // Success, exit the loop
+              } else {
+                throw new Error('Empty response from model');
+              }
+            } catch (modelError) {
+              lastModelError = modelError;
+              console.log(`Model ${modelName} failed:`, modelError.message);
+              // Try next model
+              continue;
+            }
+          }
+          
+          if (!googleWorked) {
+            throw new Error(`All Google models failed. Last error: ${lastModelError?.message || 'Unknown error'}`);
+          }
+        } catch (googleError) {
+          console.error('Google AI error:', googleError);
+          // Will fall through to Ollama fallback below
+          googleWorked = false;
+        }
+        
+        // If Google worked, we're done
+        if (googleWorked) {
+          setIsLoading(false); // Reset loading state before returning
+          // Add both user and assistant messages to chat
+          setChatMessages(prev => [
+            ...prev,
+            { role: 'user', content: userMessage, timestamp: new Date() },
+            { role: 'assistant', content: assistantMessage, timestamp: new Date() }
+          ]);
+          return; // Exit early, success
+        }
+      }
+      
+      // Fallback to Ollama (or use Ollama if no Google API key)
+      try {
+        // Use Ollama API (fallback)
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...chatMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          { role: 'user', content: userMessage }
+        ];
+
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        const response = await fetch('http://localhost:11434/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'llama3:8b',
+            messages: messages,
+            stream: false
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Ollama model "llama3:8b" not found. Run: ollama pull llama3:8b');
+          }
+          throw new Error(`Ollama server error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        assistantMessage = data.message?.content || 'Sorry, I got nothing for ya.';
+      } catch (ollamaError) {
+        // Provide more helpful error messages
+        if (ollamaError.name === 'AbortError' || ollamaError.name === 'TimeoutError') {
+          throw new Error('Ollama request timed out. Is Ollama running?');
+        }
+        if (ollamaError.message && ollamaError.message.includes('Failed to fetch')) {
+          throw new Error('Cannot connect to Ollama. Make sure Ollama is running: ollama serve');
+        }
+        throw ollamaError; // Re-throw to be caught by outer catch
+      }
+
+      // Add both user and assistant messages to chat
+      setChatMessages(prev => [
+        ...prev,
+        { role: 'user', content: userMessage, timestamp: new Date() },
+        { role: 'assistant', content: assistantMessage, timestamp: new Date() }
+      ]);
+
+    } catch (error) {
+      console.error('AI service error:', error);
+      
+      // Provide a fallback response if both APIs fail
+      const fallbackResponses = [
+        "Hey there, player! Looks like my connection's a bit spotty right now. The casino WiFi's acting up again. Try asking me something simple, or check if Ollama is running on localhost:11434.",
+        "Whoa, can't reach my usual sources right now. You got Ollama running? If not, that's cool - I'm still here, just can't give you the full degen experience without a connection.",
+        "Connection issues, huh? Classic. Make sure Ollama's running (ollama serve) or set up your Google AI API key. But hey, I'm still watching the game with ya!"
+      ];
+      
+      const randomFallback = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      const errorMessage = error.message || 'Connection failed';
+      
+      // Check if it's a network error (Failed to fetch) or any connection error
+      if (errorMessage.includes('Failed to fetch') || 
+          errorMessage.includes('NetworkError') || 
+          errorMessage.includes('Cannot connect') ||
+          errorMessage.includes('fetch')) {
+        assistantMessage = randomFallback;
+        
+        // Add both user and assistant messages to chat with fallback response
+        setChatMessages(prev => [
+          ...prev,
+          { role: 'user', content: userMessage, timestamp: new Date() },
+          { role: 'assistant', content: assistantMessage, timestamp: new Date() }
+        ]);
+        
+        // Show helpful notification
+        setMessage('Using fallback mode - check Ollama or Google AI setup');
+        setTimeout(() => {
+          if (gamePhase === 'betting') setMessage('Place your bets!');
+        }, 3000);
+      } else {
+        // For other errors, show the error message
+        setChatError(errorMessage);
+        
+        // Add error message to chat
+        setChatMessages(prev => [
+          ...prev,
+          { role: 'user', content: userMessage, timestamp: new Date() },
+          { role: 'assistant', content: `*Error: ${errorMessage}*\n\n${randomFallback}`, timestamp: new Date(), isError: true }
+        ]);
+        
+        // Show notification
+        setMessage(`Chat error: ${errorMessage}`);
+        setTimeout(() => {
+          if (gamePhase === 'betting') setMessage('Place your bets!');
+        }, 3000);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle sending chat message
+  const handleSendMessage = async (userMessage) => {
+    if (!userMessage.trim() || isLoading) return;
+
+    // Payment system removed - all questions are free
+    await sendMessageToAI(userMessage);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-2 md:p-4">
@@ -1787,6 +2311,22 @@ function App() {
         onPause={pauseTest}
         onResume={resumeTest}
         onStop={stopTest}
+      />
+
+      {/* Chat Toggle Button */}
+      <ChatToggleButton 
+        onClick={() => setChatOpen(!chatOpen)} 
+        hasUnread={false}
+      />
+
+      {/* Chat Window */}
+      <ChatWindow
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        messages={chatMessages}
+        isLoading={isLoading}
+        onSendMessage={handleSendMessage}
+        balance={balance}
       />
     </div>
   );
